@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Geoserver Test</title>
+    <link rel="stylesheet" href="https://openlayers.org/en/v4.1.1/css/ol.css" type="text/css">
+    <script src="https://openlayers.org/en/v4.1.1/build/ol.js"></script>
+    </head>
+<body>
+<div id="map" class="map"></div>
+<div id="scale"></div>
+<script type="text/javascript">
+    var format = 'image/png';
+    var hhProjection = 'EPSG:3044';
+
+    var mousePositionControl = new ol.control.MousePosition({
+        className: 'custom-mouse-position',
+        target: document.getElementById('location'),
+        coordinateFormat: ol.coordinate.createStringXY(5),
+        undefinedHTML: '&nbsp;'
+    });
+
+    <!-- OSM Tile -->
+    var osm = new ol.layer.Tile({
+        source: new ol.source.OSM()
+    });
+
+    <!-- The tiled building layer from the geoserver -->
+    var tiledBuildings = new ol.layer.Tile({
+        visible: true,
+        source: new ol.source.TileWMS({
+            url: 'http://localhost:8080/geoserver/cite/wms',
+            params: {'FORMAT': format,
+                'VERSION': '1.1.1',
+                tiled: true,
+                STYLES: 'polygon',
+                LAYERS: 'cite:buildings',
+                tilesOrigin: 548516.625 + "," + 5917051.5
+            },
+            projection: hhProjection
+        })
+    });
+
+    <!-- The tiled parcels from the geoserver, the opacity is configured by the polygon_parcels style by the geoserver -->
+    var tiledParcels = new ol.layer.Tile({
+        visible: true,
+        source: new ol.source.TileWMS({
+            url: 'http://localhost:8080/geoserver/cite/wms',
+            params: {'FORMAT': format,
+                'VERSION': '1.1.1',
+                tiled: true,
+                STYLES: 'polygon_parcels',
+                LAYERS: 'cite:parcels',
+                tilesOrigin: 548459.375 + "," + 5916908
+            },
+            projection: hhProjection
+        })
+    });
+
+    <!-- Map combining the different tile layers -->
+    var map = new ol.Map({
+        view: new ol.View({
+            projection: 'EPSG:3857',
+            center: [1113840.376172, 7085941.833121],
+            zoom: 13
+        }),
+        loadTilesWhileInteracting: true,
+        controls: ol.control.defaults({
+            attribution: false
+        }).extend([mousePositionControl]),
+        layers: [
+            osm,
+            tiledParcels,
+            tiledBuildings
+        ],
+        target: 'map'
+    });
+
+    <!-- Update the scale display -->
+    map.getView().on('change:resolution', function(evt) {
+        var resolution = evt.target.get('resolution');
+        var units = map.getView().getProjection().getUnits();
+        var dpi = 25.4 / 0.28;
+        var mpu = ol.proj.METERS_PER_UNIT[units];
+        var scale = resolution * mpu * 39.37 * dpi;
+        if (scale >= 9500 && scale <= 950000) {
+            scale = Math.round(scale / 1000) + "K";
+        } else if (scale >= 950000) {
+            scale = Math.round(scale / 1000000) + "M";
+        } else {
+            scale = Math.round(scale);
+        }
+        document.getElementById('scale').innerHTML = "Scale = 1 : " + scale;
+    });
+</script>
+
+
+
+
+
+
+<form id="myform">
+
+
+<ul>        
+    <li>
+         <input type="checkbox" name="checkfield" id="g01-01"  onchange="showBuildings(this)"/>Buildings
+       
+    </li>
+    <li>
+        <input type="checkbox" name="checkfield" id="g01-01"  onchange="showParcels(this)"/>Parcels
+     
+</form>
+
+<script>
+function showBuildings(checkboxElem) {
+  if (checkboxElem.checked) {
+  
+   tiledBuildings.visible=true;
+  } else {
+   tiledBuildings.visible=false;
+  }
+}
+
+function showParcels(checkboxElem) {
+  if (checkboxElem.checked) {
+   tiledParcels.visibile=true;
+  } else {
+   tiledParcels.visibile=false;
+  }
+}
+</script>
+ 
+</body>
+</html>
